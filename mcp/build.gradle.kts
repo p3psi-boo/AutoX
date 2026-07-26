@@ -25,6 +25,14 @@ android {
     lint {
         abortOnError = false
     }
+
+    testOptions {
+        unitTests {
+            // android.util.Log and other Android stubs return defaults (instead of throwing
+            // "not mocked") so pure-JVM unit tests can exercise code paths that log.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
