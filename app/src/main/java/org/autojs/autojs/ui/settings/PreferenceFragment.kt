@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.preference.EditTextPreference
@@ -15,9 +16,19 @@ import de.psdev.licensesdialog.LicensesDialog
 import org.autojs.autojs.external.open.RunIntentActivity
 import org.autojs.autojs.ui.widget.CommonMarkdownView
 import org.autojs.autoxjs.R
+import org.autojs.autoxjs.mcp.McpPrefKeys
+import org.autojs.autoxjs.mcp.McpServerService
 
-class PreferenceFragment : PreferenceFragmentCompat() {
+class PreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
     private val ACTION_MAP = mutableMapOf<String, (activity: Activity) -> Unit>()
+    private val mcpKeys = setOf(
+        McpPrefKeys.KEY_ENABLED,
+        McpPrefKeys.KEY_HOST,
+        McpPrefKeys.KEY_PORT,
+        McpPrefKeys.KEY_TOKEN,
+        McpPrefKeys.KEY_ALLOW_BASE64,
+        McpPrefKeys.KEY_ALLOW_NETWORK
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +50,29 @@ class PreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preferences)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
+    }
+
+    override fun onPause() {
+        preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
+        super.onPause()
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+        val safeKey = key ?: return
+        if (!mcpKeys.contains(safeKey)) {
+            return
+        }
+        val enabled = sharedPreferences.getBoolean(McpPrefKeys.KEY_ENABLED, false)
+        if (enabled) {
+            McpServerService.start(requireContext())
+        } else {
+            McpServerService.stop(requireContext())
+        }
     }
 
     override fun onDisplayPreferenceDialog(preference: Preference) {
